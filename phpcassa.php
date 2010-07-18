@@ -66,7 +66,7 @@ class CassandraConn {
         // * TODO: add random and round robin order
         // * TODO: add write-preferred and read-preferred nodes
         shuffle(self::$connections);
-        foreach(self::$connections as $connection) {
+        foreach(self::$connections as $node => $connection) {
             try {
                 $transport = $connection['transport'];
                 $client    = $connection['client'];
@@ -74,7 +74,11 @@ class CassandraConn {
                 if(!$transport->isOpen()) {
                     $transport->open();
                 }
-
+                $client = new CassandraClient(new TBinaryProtocolAccelerated($transport));
+                $connections[$node] = array(
+                	'transport' => $transport,
+                	'client' => $client
+                );
                 return $client;
             } catch (TException $tx) {
                 self::$last_error = 'TException: '.$tx->getMessage() . "\n";
