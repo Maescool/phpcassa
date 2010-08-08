@@ -110,7 +110,7 @@ class CassandraUtil {
 
 class CassandraCF {
     const DEFAULT_ROW_LIMIT = 100; // default max # of rows for get_range()
-    const DEFAULT_COLUMN_TYPE = "UTF8String";
+    const DEFAULT_COLUMN_TYPE = "UTF8Type";
     const DEFAULT_SUBCOLUMN_TYPE = null;
 
     public $keyspace;
@@ -207,7 +207,7 @@ class CassandraCF {
         return $resp;
     }
 
-    public function get_range($start_key="", $finish_key="", $row_count=self::DEFAULT_ROW_LIMIT, $slice_start="", $slice_finish="") {
+    public function get_range($start_key="", $end_key="", $row_count=self::DEFAULT_ROW_LIMIT, $slice_start="", $slice_finish="") {
         $column_parent = new cassandra_ColumnParent();
         $column_parent->column_family = $this->column_family;
         $column_parent->super_column = NULL;
@@ -218,10 +218,13 @@ class CassandraCF {
         $predicate = new cassandra_SlicePredicate();
         $predicate->slice_range = $slice_range;
 
+        $key_range = new cassandra_KeyRange();
+        $key_range->start_key = $start_key;
+        $key_range->end_key   = $end_key;
+        $key_range->count     = $row_count;
+
         $client = CassandraConn::get_client();
-        $resp = $client->get_range_slice($this->keyspace, $column_parent, $predicate,
-                                         $start_key, $finish_key, $row_count,
-                                         $this->read_consistency_level);
+        $resp = $client->get_range_slices($this->keyspace, $column_parent, $predicate, $key_range, $this->read_consistency_level);
 
         return $this->keyslices_to_array($resp);
     }
@@ -267,9 +270,9 @@ class CassandraCF {
         return $ret;
     }
 
-    public function get_range_list($key_name='key', $start_key="", $finish_key="",
+    public function get_range_list($key_name='key', $start_key="", $end_key="",
                                    $row_count=self::DEFAULT_ROW_LIMIT, $slice_start="", $slice_finish="") {
-        $resp = $this->get_range($start_key, $finish_key, $row_count, $slice_start, $slice_finish);
+        $resp = $this->get_range($start_key, $end_key, $row_count, $slice_start, $slice_finish);
         $ret = array();
         foreach($resp as $_key => $_value) {
             if(!empty($_value)) { // filter nulls
